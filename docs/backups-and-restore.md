@@ -12,7 +12,7 @@
 - retention is enforced by backup age, not by a hidden count cap
 - changing the retention window applies pruning immediately
 
-Backup scheduling uses a numeric five-field cron expression with standard cron day-of-month/day-of-week OR semantics.
+Backup scheduling uses a numeric five-field cron expression with standard cron day-of-month/day-of-week OR semantics. The schedule is evaluated in the server timezone, so set `TZ` if you want the app to follow a specific zone such as `Europe/Amsterdam`.
 
 ## What backups protect
 

@@ -27,6 +27,7 @@ import {
   scanRunRecordSchema,
   settingsSchema
 } from '@/shared/models'
+import { getRuntimeTimeZone } from './timezone'
 
 export type RuleEntityStateRecord = {
   ruleId: number
@@ -1742,7 +1743,8 @@ export class Store {
       app: {
         name: 'pokarr',
         version: appVersion,
-        mode: process.env.NODE_ENV === 'production' ? 'production' : 'development'
+        mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+        timeZone: getRuntimeTimeZone()
       },
       dashboard: {
         instanceCount: instances.length,

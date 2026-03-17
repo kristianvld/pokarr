@@ -35,6 +35,8 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    environment:
+      TZ: Europe/Amsterdam
     volumes:
       - ./data:/app/data
 ```

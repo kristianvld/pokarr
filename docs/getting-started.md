@@ -20,6 +20,8 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    environment:
+      TZ: Europe/Amsterdam
     volumes:
       - ./data:/app/data
 ```
@@ -40,6 +42,7 @@ If you prefer plain Docker instead of Compose, run:
 docker run -d \
   --restart unless-stopped \
   -p 3000:3000 \
+  -e TZ=Europe/Amsterdam \
   -v "$PWD/data:/app/data" \
   ghcr.io/kristianvld/pokarr:latest
 ```

@@ -1824,6 +1824,7 @@ export function SystemContent({
               </div>
               <InfoLine label="Mode" value={state.app.mode} />
               <InfoLine label="Version" value={state.app.version} />
+              <InfoLine label="Timezone" value={state.app.timeZone} />
               <InfoLine label="Queue snapshot" value={formatDateCompact(scanStatus?.queueUpdatedAt ?? null)} />
               <InfoLine label="Last queue rebuild" value={formatDateCompact(worker?.lastQueueRebuildAt ?? null)} />
               <InfoLine label="Queue backlog" value={String(worker?.queueLength ?? 0)} />

@@ -1,9 +1,13 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 export const defaultNotificationAppId = 'Pokarr'
 export const defaultNotificationAppDescription = 'Pokarr Sonarr and Radarr automation'
 export const defaultNotificationAppUrl = 'https://github.com/kristianvld/pokarr'
 export const defaultNotificationLogoUrl = 'https://raw.githubusercontent.com/kristianvld/pokarr/main/public/favicon.png'
 
-const defaultNotificationBrandingParams = {
+const defaultNotificationBrandingAsset = {
   app_id: defaultNotificationAppId,
   app_desc: defaultNotificationAppDescription,
   app_url: defaultNotificationAppUrl,
@@ -11,38 +15,43 @@ const defaultNotificationBrandingParams = {
   image_url_mask: defaultNotificationLogoUrl
 } as const
 
-function hasNonEmptyLastValue(params: URLSearchParams, name: string) {
-  const values = params.getAll(name)
-  if (values.length === 0) {
-    return false
-  }
-
-  return values[values.length - 1]?.trim().length > 0
+function yamlString(value: string) {
+  return JSON.stringify(value)
 }
 
-export function applyNotificationBranding(rawUrl: string) {
+export function buildNotificationConfig(rawUrl: string) {
   const trimmed = rawUrl.trim()
   if (!trimmed) {
     return ''
   }
 
-  const fragmentIndex = trimmed.indexOf('#')
-  const fragment = fragmentIndex === -1 ? '' : trimmed.slice(fragmentIndex)
-  const withoutFragment = fragmentIndex === -1 ? trimmed : trimmed.slice(0, fragmentIndex)
-  const queryIndex = withoutFragment.indexOf('?')
-  const base = queryIndex === -1 ? withoutFragment : withoutFragment.slice(0, queryIndex)
-  const query = queryIndex === -1 ? '' : withoutFragment.slice(queryIndex + 1)
-  const params = new URLSearchParams(query)
-
-  for (const [name, value] of Object.entries(defaultNotificationBrandingParams)) {
-    if (hasNonEmptyLastValue(params, name)) {
-      continue
-    }
-
-    params.delete(name)
-    params.append(name, value)
+  const lines = ['version: 1', 'asset:']
+  for (const [name, value] of Object.entries(defaultNotificationBrandingAsset)) {
+    lines.push(`  ${name}: ${yamlString(value)}`)
   }
 
-  const brandedQuery = params.toString()
-  return brandedQuery ? `${base}?${brandedQuery}${fragment}` : `${base}${fragment}`
+  lines.push('urls:')
+  lines.push(`  - ${yamlString(trimmed)}`)
+  lines.push('')
+  return lines.join('\n')
+}
+
+export async function withNotificationConfig<T>(rawUrl: string, run: (configPath: string) => Promise<T>): Promise<T> {
+  const config = buildNotificationConfig(rawUrl)
+  if (!config) {
+    throw new Error('Enter a notification URL before continuing.')
+  }
+
+  const configDir = await mkdtemp(join(tmpdir(), 'pokarr-apprise-'))
+  const configPath = join(configDir, 'apprise.yaml')
+  await writeFile(configPath, config, {
+    encoding: 'utf8',
+    mode: 0o600
+  })
+
+  try {
+    return await run(configPath)
+  } finally {
+    await rm(configDir, { recursive: true, force: true })
+  }
 }

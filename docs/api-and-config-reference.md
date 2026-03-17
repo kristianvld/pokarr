@@ -244,11 +244,13 @@ These settings are configured in the UI or API and stored in the app database. T
 Environment variables are reserved for server/runtime behavior. They do not override saved app settings such as backup retention, backup schedule, or notifications.
 
 Most deployments only need `PORT` and `POKARR_DATA_DIR`.
+If you want schedules to follow a specific local timezone, also set `TZ` to an IANA timezone name such as `Europe/Amsterdam`.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PORT` | `3000` | Bun server port |
 | `POKARR_DATA_DIR` | `data` | Data directory for SQLite and backups, resolved relative to the app root when not absolute |
+| `TZ` | host default, container `UTC` | Server timezone used for cron schedules and other local-time evaluation |
 | `POKARR_SESSION_TTL_DAYS` | `30` | Rolling session lifetime in days |
 | `POKARR_COOKIE_SECURE` | `auto` | Whether to set the `Secure` cookie flag (`auto`, `true`, `false`) |
 | `POKARR_SESSION_COOKIE_NAME` | `pokarr_session` | Optional session cookie name override |
@@ -267,5 +269,6 @@ Most deployments only need `PORT` and `POKARR_DATA_DIR`.
 | `APP_VERSION` | derived | Application version shown in API state and container builds |
 
 The backup schedule field in Settings uses a numeric five-field cron expression. When both day-of-month and day-of-week are restricted, it follows standard cron OR semantics.
+That schedule runs in the server timezone. Set `TZ` if you want the app to follow a specific timezone such as `Europe/Amsterdam`.
 
 `POKARR_COOKIE_SECURE=auto` enables `Secure` cookies when requests arrive over HTTPS, including the common reverse-proxy case where `X-Forwarded-Proto: https` is set.

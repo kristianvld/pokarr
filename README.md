@@ -36,6 +36,8 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    environment:
+      TZ: Europe/Amsterdam
     volumes:
       - ./data:/app/data
 ```
@@ -54,6 +56,7 @@ If you prefer plain Docker instead of Compose:
 docker run -d \
   --restart unless-stopped \
   -p 3000:3000 \
+  -e TZ=Europe/Amsterdam \
   -v "$PWD/data:/app/data" \
   ghcr.io/kristianvld/pokarr:latest
 ```
@@ -86,6 +89,7 @@ Most users only need:
 
 - `PORT`
 - `POKARR_DATA_DIR`
+- `TZ`
 
 Advanced runtime envs are available for session behavior, request timeouts, health checks, scheduler polling, scan-worker tuning, and restore safety. They are documented in the config reference and `.env.example`.
 

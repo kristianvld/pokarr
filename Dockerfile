@@ -21,8 +21,10 @@ ENV NODE_ENV=production \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
     POKARR_DATA_DIR=/app/data \
+    TZ=UTC \
     PYTHONUNBUFFERED=1
 
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
 RUN pip install --disable-pip-version-check --no-cache-dir --no-compile apprise==1.9.8
 RUN addgroup --system pokarr && adduser --system --ingroup pokarr --home /app --no-create-home pokarr
 

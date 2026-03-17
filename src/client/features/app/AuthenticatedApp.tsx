@@ -160,6 +160,7 @@ export function AuthenticatedApp({
   const state = stateQuery.data ?? null
   const scanStatus = scanStatusQuery.data ?? null
   const loading = stateQuery.isPending && !state
+  const editingInstanceLoading = editingInstanceId !== null && editingInstanceQuery.isPending
   const queueItems = queueQuery.data?.items ?? []
   const queueIssues = queueQuery.data?.issues ?? []
   const instanceTestPending = testInstanceMutation.isPending
@@ -1083,7 +1084,7 @@ export function AuthenticatedApp({
           <InstanceEditorDialog
             editingInstanceId={editingInstanceId}
             form={instanceForm}
-            loading={editingInstanceQuery.isPending}
+            detailsLoading={editingInstanceLoading}
             open={instanceDialogOpen}
             onChange={(next) => {
               setInstanceForm(next)

@@ -7,9 +7,8 @@ Pokarr accepts a single notification URL and uses Apprise to validate and send n
 - Discord webhooks work out of the box.
 - Any other Apprise-supported URL works too.
 - The notification URL is stored with the rest of the app settings, so backup and restore keep it in sync with the rest of the configuration.
-- Pokarr appends default Apprise branding for `app_id`, `app_desc`, `app_url`, `image_url_logo`, and `image_url_mask`.
+- Pokarr generates an Apprise YAML config at send time and applies default `asset` branding for `app_id`, `app_desc`, `app_url`, `image_url_logo`, and `image_url_mask`.
 - The default logo URL is `https://raw.githubusercontent.com/kristianvld/pokarr/main/public/favicon.png`.
-- You can override any of those branding fields by adding the same query params to the notification URL yourself.
 - Notifications are sent as Markdown via Apprise so supported services can render stronger formatting while plain-text fallbacks remain readable.
 
 ## What it sends

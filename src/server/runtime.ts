@@ -10,7 +10,7 @@ import {
   buildRestoreFailedNotification,
   buildRunNotification
 } from './notificationMessages'
-import { applyNotificationBranding } from './notifications'
+import { withNotificationConfig } from './notifications'
 import { cronMatches, isValidCronExpression } from '@/shared/cron'
 import {
   scanStatusResponseSchema,
@@ -210,33 +210,34 @@ async function validateNotificationUrl(notificationUrl: string | null) {
     return
   }
 
-  const brandedUrl = applyNotificationBranding(trimmed)
-
   const apprisePath = Bun.which('apprise')
   if (!apprisePath) {
     throw new Error('Notification URL validation is unavailable because Apprise is not installed.')
   }
 
-  const process = Bun.spawn({
-    cmd: [apprisePath, '--dry-run', brandedUrl],
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe'
-  })
 
-  const [exitCode, stderr] = await Promise.all([
-    process.exited,
-    process.stderr ? new Response(process.stderr).text() : Promise.resolve('')
-  ])
+  await withNotificationConfig(trimmed, async (configPath) => {
+    const process = Bun.spawn({
+      cmd: [apprisePath, '--dry-run', '--config', configPath],
+      stdin: 'ignore',
+      stdout: 'pipe',
+      stderr: 'pipe'
+    })
 
-  if (exitCode !== 0) {
-    const detail = stderr.trim()
-    if (detail.includes('Unsupported URL') || detail.includes('Unparseable URL')) {
-      throw new Error('Enter a supported notification URL, such as a Discord webhook or another Apprise URL.')
+    const [exitCode, stderr] = await Promise.all([
+      process.exited,
+      process.stderr ? new Response(process.stderr).text() : Promise.resolve('')
+    ])
+
+    if (exitCode !== 0) {
+      const detail = stderr.trim()
+      if (detail.includes('Unsupported URL') || detail.includes('Unparseable URL')) {
+        throw new Error('Enter a supported notification URL, such as a Discord webhook or another Apprise URL.')
+      }
+
+      throw new Error(detail || 'Notification URL validation failed.')
     }
-
-    throw new Error(detail || 'Notification URL validation failed.')
-  }
+  })
 }
 
 async function sendNotificationTest(notificationUrl: string | null) {
@@ -246,7 +247,6 @@ async function sendNotificationTest(notificationUrl: string | null) {
   }
 
   await validateNotificationUrl(trimmed)
-  const brandedUrl = applyNotificationBranding(trimmed)
   const message = buildNotificationTestMessage()
 
   const apprisePath = Bun.which('apprise')
@@ -254,32 +254,23 @@ async function sendNotificationTest(notificationUrl: string | null) {
     throw new Error('Notification testing is unavailable because Apprise is not installed.')
   }
 
-  const process = Bun.spawn({
-    cmd: [
-      apprisePath,
-      '-t',
-      message.title,
-      '-b',
-      message.body,
-      '-n',
-      message.level,
-      '-i',
-      'markdown',
-      brandedUrl
-    ],
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe'
+  await withNotificationConfig(trimmed, async (configPath) => {
+    const process = Bun.spawn({
+      cmd: [apprisePath, '--config', configPath, '-t', message.title, '-b', message.body, '-n', message.level, '-i', 'markdown'],
+      stdin: 'ignore',
+      stdout: 'pipe',
+      stderr: 'pipe'
+    })
+
+    const [exitCode, stderr] = await Promise.all([
+      process.exited,
+      process.stderr ? new Response(process.stderr).text() : Promise.resolve('')
+    ])
+
+    if (exitCode !== 0) {
+      throw new Error(stderr.trim() || 'Failed to send test notification.')
+    }
   })
-
-  const [exitCode, stderr] = await Promise.all([
-    process.exited,
-    process.stderr ? new Response(process.stderr).text() : Promise.resolve('')
-  ])
-
-  if (exitCode !== 0) {
-    throw new Error(stderr.trim() || 'Failed to send test notification.')
-  }
 }
 
 async function sendNotification(
@@ -295,39 +286,28 @@ async function sendNotification(
     return
   }
 
-  const brandedUrl = applyNotificationBranding(trimmed)
-
   const apprisePath = Bun.which('apprise')
   if (!apprisePath) {
     throw new Error('Notification sending is unavailable because Apprise is not installed.')
   }
 
-  const process = Bun.spawn({
-    cmd: [
-      apprisePath,
-      '-t',
-      input.title,
-      '-b',
-      input.body,
-      '-n',
-      input.level ?? 'info',
-      '-i',
-      'markdown',
-      brandedUrl
-    ],
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe'
+  await withNotificationConfig(trimmed, async (configPath) => {
+    const process = Bun.spawn({
+      cmd: [apprisePath, '--config', configPath, '-t', input.title, '-b', input.body, '-n', input.level ?? 'info', '-i', 'markdown'],
+      stdin: 'ignore',
+      stdout: 'pipe',
+      stderr: 'pipe'
+    })
+
+    const [exitCode, stderr] = await Promise.all([
+      process.exited,
+      process.stderr ? new Response(process.stderr).text() : Promise.resolve('')
+    ])
+
+    if (exitCode !== 0) {
+      throw new Error(stderr.trim() || 'Failed to send notification.')
+    }
   })
-
-  const [exitCode, stderr] = await Promise.all([
-    process.exited,
-    process.stderr ? new Response(process.stderr).text() : Promise.resolve('')
-  ])
-
-  if (exitCode !== 0) {
-    throw new Error(stderr.trim() || 'Failed to send notification.')
-  }
 }
 
 function getInstanceHealthState(record: { lastValidatedAt: string | null; lastError: string | null }) {

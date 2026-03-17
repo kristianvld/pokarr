@@ -40,12 +40,12 @@ export function InstanceEditorDialog({
   onSave,
   onTest,
   testPending,
-  loading,
+  detailsLoading,
   testState
 }: {
   editingInstanceId: number | null
   form: InstanceInput
-  loading: boolean
+  detailsLoading: boolean
   open: boolean
   onChange: (next: InstanceInput) => void
   onClose: () => void
@@ -83,16 +83,16 @@ export function InstanceEditorDialog({
                 </span>
               ) : null}
             </div>
-            <Button variant="secondary" onClick={onTest} disabled={testPending}>
+            <Button variant="secondary" onClick={onTest} disabled={testPending || detailsLoading}>
               <span className="inline-flex items-center gap-2">
                 {testPending ? <RefreshCw size={14} className="animate-spin" /> : null}
-                {testPending ? 'Testing' : loading ? 'Loading' : 'Test'}
+                {testPending ? 'Testing' : 'Test connection'}
               </span>
             </Button>
             <Button variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button disabled={loading} onClick={onSave}>{editingInstanceId ? 'Save' : 'Add instance'}</Button>
+            <Button disabled={detailsLoading} onClick={onSave}>{editingInstanceId ? 'Save' : 'Add instance'}</Button>
           </div>
         </div>
       }
@@ -101,7 +101,7 @@ export function InstanceEditorDialog({
       title={editingInstanceId ? 'Edit Instance' : 'Add New Instance'}
     >
       <div className="space-y-4">
-        {loading ? <FieldFeedback tone="success">Loading instance details...</FieldFeedback> : null}
+        {detailsLoading ? <p className="text-[0.74rem] leading-5 text-[var(--muted)]">Loading instance details...</p> : null}
         <ModalSection columnsClassName="grid-cols-1">
           <FieldBlock label="Type">
             <InstanceTypeSelect value={form.kind} onChange={(kind) => onChange({ ...form, kind })} />

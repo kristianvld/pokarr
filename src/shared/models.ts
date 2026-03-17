@@ -336,7 +336,8 @@ export const appStateSchema = z.object({
   app: z.object({
     name: z.literal('pokarr'),
     version: z.string(),
-    mode: z.enum(['development', 'production'])
+    mode: z.enum(['development', 'production']),
+    timeZone: z.string()
   }),
   dashboard: dashboardSchema,
   instances: z.array(instanceRecordSchema),
