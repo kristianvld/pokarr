@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["bun"]
+  },
+  "include": [
+    "server.ts",
+    "src/server/**/*.ts",
+    "src/shared/**/*.ts",
+    "scripts/**/*.ts",
+    "docs/.vitepress/config.mts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ]
+}

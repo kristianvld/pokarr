@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Open Sans", sans-serif;
+  --font-heading: "Open Sans", sans-serif;
+  --font-brand: "Rajdhani", sans-serif;
+}
+
+:root {
+  --background: #222326;
+  --chrome: #3f4349;
+  --sidebar: #494949;
+  --sidebar-strong: #3e3f43;
+  --page: #2a2b2f;
+  --panel: #2f3034;
+  --panel-soft: #36383d;
+  --panel-strong: #3b3d43;
+  --toolbar: #333439;
+  --line: #64676d;
+  --line-strong: #8a8c91;
+  --foreground: #f0f1f3;
+  --foreground-soft: #d5d7db;
+  --muted: #b2b4b9;
+  --muted-strong: #cfd1d4;
+  --accent: #69a7e3;
+  --accent-strong: #7db9f4;
+  --accent-foreground: #ffffff;
+  --accent-warm: #f2c037;
+  --accent-cool: #33c1eb;
+  --success: #7ed36b;
+  --warning: #f3c25a;
+  --danger: #ea6b67;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--foreground);
+  background: var(--background);
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  visibility: visible;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+button,
+[role="button"],
+summary,
+a[href] {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+
+code {
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--foreground);
+}

@@ -1,0 +1,136 @@
+name: docs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+  pages: write
+
+concurrency:
+  group: docs-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
+        with:
+          bun-version: "1.3.10"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Compute docs metadata
+        id: meta
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY#*/}"
+          base_path="/${repo}/"
+
+          versions=""
+          if [[ -d docs/versions ]]; then
+            versions="$(find docs/versions -mindepth 1 -maxdepth 1 -type d -name 'v[0-9]*.[0-9]*.[0-9]*' -exec basename {} \; | sort -Vr | tr '\n' ',' | sed 's/,$//')"
+          fi
+
+          latest=""
+          if [[ -n "${versions}" ]]; then
+            latest="$(echo "${versions}" | cut -d',' -f1)"
+          fi
+
+          {
+            echo "base_path=${base_path}"
+            echo "versions=${versions}"
+            echo "latest=${latest}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Build edge docs
+        env:
+          VITEPRESS_BASE: ${{ steps.meta.outputs.base_path }}edge/
+          DOCS_BASE_PATH: ${{ steps.meta.outputs.base_path }}
+          DOCS_VERSION_LIST: ${{ steps.meta.outputs.versions }}
+          DOCS_LATEST_VERSION: ${{ steps.meta.outputs.latest }}
+        run: bun run docs:build
+
+      - name: Build version docs
+        env:
+          BASE_PATH: ${{ steps.meta.outputs.base_path }}
+          DOCS_VERSION_LIST: ${{ steps.meta.outputs.versions }}
+          DOCS_LATEST_VERSION: ${{ steps.meta.outputs.latest }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${DOCS_VERSION_LIST}" ]]; then
+            echo "No version folders found"
+            exit 0
+          fi
+
+          IFS=',' read -r -a versions <<< "${DOCS_VERSION_LIST}"
+          for version in "${versions[@]}"; do
+            [[ -z "${version}" ]] && continue
+            [[ ! -d "docs/versions/${version}" ]] && continue
+
+            VITEPRESS_BASE="${BASE_PATH}${version}/" \
+            DOCS_BASE_PATH="${BASE_PATH}" \
+            DOCS_VERSION_LIST="${DOCS_VERSION_LIST}" \
+            DOCS_LATEST_VERSION="${DOCS_LATEST_VERSION}" \
+            bunx vitepress build "docs/versions/${version}"
+          done
+
+      - name: Prepare deploy directory
+        run: |
+          set -euo pipefail
+
+          mkdir -p .deploy
+          touch .deploy/.nojekyll
+
+          latest="${{ steps.meta.outputs.latest }}"
+          versions="${{ steps.meta.outputs.versions }}"
+
+          if [[ -n "${latest}" ]]; then
+            cp -a "docs/versions/${latest}/.vitepress/dist/." .deploy/
+          else
+            cp -a docs/.vitepress/dist/. .deploy/
+          fi
+
+          mkdir -p .deploy/edge
+          cp -a docs/.vitepress/dist/. .deploy/edge/
+
+          if [[ -n "${versions}" ]]; then
+            IFS=',' read -r -a version_dirs <<< "${versions}"
+            for version in "${version_dirs[@]}"; do
+              [[ -z "${version}" ]] && continue
+              [[ ! -d "docs/versions/${version}/.vitepress/dist" ]] && continue
+              mkdir -p ".deploy/${version}"
+              cp -a "docs/versions/${version}/.vitepress/dist/." ".deploy/${version}/"
+            done
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
+        with:
+          path: .deploy
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e

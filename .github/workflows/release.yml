@@ -1,0 +1,113 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  attestations: write
+  contents: write
+  id-token: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
+
+      - name: Log in to GHCR
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image metadata
+        id: meta
+        run: |
+          set -euo pipefail
+
+          version="${GITHUB_REF_NAME#v}"
+          major="${version%%.*}"
+          remainder="${version#*.}"
+          minor="${remainder%%.*}"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+
+          {
+            echo "image=${image}"
+            echo "version=${version}"
+            echo "tags<<EOF"
+            echo "${image}:latest"
+            echo "${image}:${version}"
+            echo "${image}:${major}.${minor}"
+            echo "${image}:${major}"
+            echo "EOF"
+            echo "labels<<EOF"
+            echo "org.opencontainers.image.title=pokarr"
+            echo "org.opencontainers.image.description=Controlled Sonarr and Radarr search nudges"
+            echo "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}"
+            echo "org.opencontainers.image.url=https://github.com/${GITHUB_REPOSITORY}"
+            echo "org.opencontainers.image.version=${GITHUB_REF_NAME}"
+            echo "org.opencontainers.image.revision=${GITHUB_SHA}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Build timestamp
+        id: build_time
+        run: echo "ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "${GITHUB_OUTPUT}"
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+            BUILD_DATE=${{ steps.build_time.outputs.ts }}
+            COMMIT=${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be
+        with:
+          push-to-registry: true
+          subject-name: ${{ steps.meta.outputs.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+
+      - name: Generate release notes
+        run: |
+          cat > release-notes.md <<'NOTES'
+          ## Container image
+          - `${{ steps.meta.outputs.image }}:latest`
+          - `${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}`
+
+          ## Documentation
+          - Latest release docs publish to the GitHub Pages root
+          - Edge docs publish under `/edge/`
+          - Version snapshots publish under `/vX.Y.Z/`
+
+          ## Notes
+          See commit history and the versioned docs snapshot for release details.
+          NOTES
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "${GITHUB_REF_NAME}" --verify-tag --notes-file release-notes.md

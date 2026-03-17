@@ -1,0 +1,13 @@
+{
+  "deadCode": false,
+  "ignore": {
+    "files": [
+      "data/**",
+      "dist/**",
+      "docs/**",
+      "output/**",
+      ".deploy/**",
+      ".playwright-cli/**"
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.vite/
+data/
+.playwright-cli/
+output/
+.deploy/
+.DS_Store
+coverage/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+docs/versions/*/node_modules/
+docs/versions/*/.vitepress/dist/
+docs/versions/*/.vitepress/cache/
+.env
+.env.local
+.env.*.local
