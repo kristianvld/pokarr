@@ -10,6 +10,7 @@ import {
   buildRestoreFailedNotification,
   buildRunNotification
 } from './notificationMessages'
+import { didInstanceHealthStateChange, getInstanceHealthState } from './instanceHealth'
 import { withNotificationConfig } from './notifications'
 import { cronMatches, isValidCronExpression } from '@/shared/cron'
 import {
@@ -189,21 +190,6 @@ function shouldAbortRemainingDispatches(error: unknown) {
   return error.kind === 'http' && error.status !== null && (error.status === 401 || error.status === 403 || error.status >= 500)
 }
 
-function didInstanceHealthChange(
-  previous: { lastValidatedAt: string | null; lastError: string | null } | null,
-  next: { lastValidatedAt: string | null; lastError: string | null } | null
-) {
-  if (!previous || !next) {
-    return false
-  }
-
-  return (
-    getInstanceHealthState(previous) !== getInstanceHealthState(next) ||
-    previous.lastError !== next.lastError ||
-    previous.lastValidatedAt !== next.lastValidatedAt
-  )
-}
-
 async function validateNotificationUrl(notificationUrl: string | null) {
   const trimmed = notificationUrl?.trim() ?? ''
   if (!trimmed) {
@@ -310,18 +296,6 @@ async function sendNotification(
   })
 }
 
-function getInstanceHealthState(record: { lastValidatedAt: string | null; lastError: string | null }) {
-  if (record.lastError) {
-    return 'unhealthy' as const
-  }
-
-  if (record.lastValidatedAt) {
-    return 'healthy' as const
-  }
-
-  return 'unknown' as const
-}
-
 async function updateInstanceHealthAndNotify(id: number, success: boolean, message?: string) {
   const previous = store.getInstances().find((item) => item.id === id) ?? null
   const updated = store.updateInstanceValidation(id, success, message)
@@ -332,10 +306,7 @@ async function updateInstanceHealthAndNotify(id: number, success: boolean, messa
 
   const previousState = getInstanceHealthState(previous)
   const nextState = getInstanceHealthState(updated)
-  const changed =
-    previousState !== nextState ||
-    previous.lastError !== updated.lastError ||
-    previous.lastValidatedAt !== updated.lastValidatedAt
+  const changed = didInstanceHealthStateChange(previous, updated)
 
   if (!changed) {
     return { instance: updated, changed }
@@ -345,7 +316,7 @@ async function updateInstanceHealthAndNotify(id: number, success: boolean, messa
   const shouldNotifyFailure =
     nextState === 'unhealthy' &&
     settings.notifications.instanceConnectionLost &&
-    (previousState !== 'unhealthy' || previous.lastError !== updated.lastError)
+    previousState !== 'unhealthy'
   const shouldNotifyRestore =
     previousState === 'unhealthy' &&
     nextState === 'healthy' &&
@@ -2893,16 +2864,16 @@ async function checkInstanceHealth(instanceId: number) {
     await fetchValidatedInstanceStatus(instance)
   } catch {
     const current = store.getInstances().find((item) => item.id === instance.id) ?? null
-    return {
-      instance: current,
-      changed: didInstanceHealthChange(previous, current)
-    }
+      return {
+        instance: current,
+        changed: didInstanceHealthStateChange(previous, current)
+      }
   }
 
   const current = store.getInstances().find((item) => item.id === instance.id) ?? null
   return {
     instance: current,
-    changed: didInstanceHealthChange(previous, current ?? null)
+    changed: didInstanceHealthStateChange(previous, current ?? null)
   }
 }
 

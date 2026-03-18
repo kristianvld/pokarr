@@ -1,5 +1,4 @@
-import './src/server/bootstrap-env'
-
-const [{ default: homepage }, { startServer }] = await Promise.all([import('./index.html'), import('./src/server/index')])
+import homepage from './index.html'
+import { startServer } from './src/server/index'
 
 startServer(homepage)

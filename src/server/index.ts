@@ -4,6 +4,9 @@ import { Store } from './db'
 import { createAuthService } from './auth'
 import { createApiFetchHandler } from './routes'
 import { createRuntime } from './runtime'
+import { configureProcessTimeZone } from './timezone'
+
+configureProcessTimeZone()
 
 const store = new Store()
 await store.init()
