@@ -644,6 +644,9 @@ export function TableFrame({
   }>
   rows: Array<{
     key: string
+    onClick?: () => void
+    rowClassName?: string
+    title?: string
     cells: Array<{
       key: string
       content: ReactNode
@@ -668,7 +671,28 @@ export function TableFrame({
           <tbody>
             {rows.length > 0
               ? rows.map((row) => (
-                  <tr key={row.key} className="align-top text-[var(--foreground)]">
+                  <tr
+                    key={row.key}
+                    className={cn(
+                      'align-top text-[var(--foreground)]',
+                      row.onClick ? 'cursor-pointer transition hover:bg-[rgba(255,255,255,0.03)] focus-within:bg-[rgba(255,255,255,0.03)]' : '',
+                      row.rowClassName
+                    )}
+                    onClick={row.onClick}
+                    onKeyDown={
+                      row.onClick
+                        ? (event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              row.onClick?.()
+                            }
+                          }
+                        : undefined
+                    }
+                    role={row.onClick ? 'button' : undefined}
+                    tabIndex={row.onClick ? 0 : undefined}
+                    title={row.title}
+                  >
                     {row.cells.map((cell) => (
                       <td key={cell.key} className="border-b border-[rgba(255,255,255,0.08)] px-3 py-2">
                         {cell.content}

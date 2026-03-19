@@ -97,7 +97,7 @@ function truncateLine(value: string, limit = 220) {
     return trimmed
   }
 
-  return `${trimmed.slice(0, limit - 1)}...`
+  return `${trimmed.slice(0, limit - 3)}...`
 }
 
 function buildListSection(title: string, lines: string[], limit = 5): [string, string] | null {

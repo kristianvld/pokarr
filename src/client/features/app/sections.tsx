@@ -54,6 +54,7 @@ import {
   InfoLine,
   ListResultsSummary,
   MetricPanel,
+  ModalShell,
   MutedSummary,
   PageSizeControl,
   ProgressiveListFooter,
@@ -1415,20 +1416,35 @@ export function InstanceSortMenu({
   )
 }
 
-export function QueueItemLink({ title, url }: { title: string; url: string | null }) {
+export function QueueItemLink({
+  title,
+  url,
+  className,
+  stopRowClickPropagation = false
+}: {
+  title: string
+  url: string | null
+  className?: string
+  stopRowClickPropagation?: boolean
+}) {
   if (!url) {
-    return <span>{title}</span>
+    return <span className={className}>{title}</span>
   }
 
   return (
     <a
-      className="inline-flex items-center gap-1 text-[var(--foreground)] transition hover:text-[var(--accent)] hover:underline"
+      className={cn(
+        'inline-flex min-w-0 items-center gap-1 text-[var(--foreground)] transition hover:text-[var(--accent)] hover:underline',
+        className
+      )}
       href={url}
       rel="noreferrer"
       target="_blank"
       title="Open in the connected service"
+      onClick={stopRowClickPropagation ? (event) => event.stopPropagation() : undefined}
+      onKeyDown={stopRowClickPropagation ? (event) => event.stopPropagation() : undefined}
     >
-      <span>{title}</span>
+      <span className="truncate">{title}</span>
       <ArrowUpRight size={13} className="shrink-0" />
     </a>
   )
@@ -1463,26 +1479,8 @@ function countRunDetailEntries(details: AppState['runs'][number]['details']) {
   return details.dispatched.length + details.failed.length + details.deferred.length + details.notes.length
 }
 
-function summarizeRunDetailDisclosure(details: AppState['runs'][number]['details']) {
-  const parts: string[] = []
-
-  if (details.dispatched.length > 0) {
-    parts.push(`${details.dispatched.length} ${details.dispatched.length === 1 ? 'search' : 'searches'} triggered`)
-  }
-
-  if (details.failed.length > 0) {
-    parts.push(`${details.failed.length} ${details.failed.length === 1 ? 'failure' : 'failures'}`)
-  }
-
-  if (details.deferred.length > 0) {
-    parts.push(`${details.deferred.length} left for later`)
-  }
-
-  if (parts.length === 0 && details.notes.length > 0) {
-    parts.push(`${details.notes.length} ${details.notes.length === 1 ? 'note' : 'notes'}`)
-  }
-
-  return parts.join(' · ') || 'Show run details'
+function getRunPreviewItem(details: AppState['runs'][number]['details']) {
+  return details.dispatched[0] ?? details.failed[0] ?? details.deferred[0] ?? null
 }
 
 function RunDetailItemList({
@@ -1542,26 +1540,111 @@ function RunDetailsBody({
   )
 }
 
-function RunDetailsPanel({ run }: { run: AppState['runs'][number] }) {
+function RunSummaryCell({
+  run,
+  onOpen
+}: {
+  run: AppState['runs'][number]
+  onOpen: () => void
+}) {
   const detailEntryCount = countRunDetailEntries(run.details)
-  if (detailEntryCount === 0) {
+  const previewItem = getRunPreviewItem(run.details)
+  const moreCount = Math.max(0, detailEntryCount - (previewItem ? 1 : 0))
+
+  return (
+    <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap">
+      <span className="min-w-0 shrink truncate text-[0.84rem] leading-5 text-[var(--foreground)]">{run.summary}</span>
+      {previewItem ? <span className="shrink-0 text-[var(--line-strong)]">·</span> : null}
+      {previewItem ? (
+        <QueueItemLink
+          title={previewItem.title}
+          url={previewItem.itemUrl}
+          className="max-w-[15rem] shrink text-[0.82rem] text-[var(--foreground-soft)]"
+          stopRowClickPropagation
+        />
+      ) : null}
+      {detailEntryCount > 0 && moreCount > 0 ? (
+        <button
+          className="shrink-0 text-[0.78rem] font-semibold text-[var(--accent)] transition hover:text-white"
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpen()
+          }}
+          type="button"
+        >
+          +{moreCount} more
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+function RunDetailsDialog({
+  run,
+  open,
+  onClose
+}: {
+  run: AppState['runs'][number] | null
+  open: boolean
+  onClose: () => void
+}) {
+  if (!open || !run) {
     return null
   }
 
-  const showInline = detailEntryCount <= 3 && run.details.failed.length <= 1 && run.details.notes.length <= 1
-  if (showInline) {
-    return <RunDetailsBody details={run.details} compact />
-  }
-
   return (
-    <details className="rounded-[2px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
-      <summary className="cursor-pointer list-none text-[0.78rem] font-semibold text-[var(--foreground-soft)] marker:hidden">
-        {summarizeRunDetailDisclosure(run.details)}
-      </summary>
-      <div className="pt-2">
+    <ModalShell
+      title={`Run #${run.id}`}
+      open={open}
+      onClose={onClose}
+      footer={
+        <div className="flex justify-end">
+          <Button variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Started</p>
+            <p className="mt-1 text-[0.88rem] text-[var(--foreground)]">{formatDate(run.startedAt)}</p>
+          </div>
+          <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Status</p>
+            <p className="mt-1 text-[0.88rem] text-[var(--foreground)]">{run.status}</p>
+          </div>
+          <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Trigger</p>
+            <p className="mt-1 text-[0.88rem] text-[var(--foreground)]">{run.trigger}</p>
+          </div>
+          <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Duration</p>
+            <p className="mt-1 text-[0.88rem] text-[var(--foreground)]">{formatRunDuration(run.startedAt, run.endedAt)}</p>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Selected</p>
+            <p className="mt-1 text-[0.88rem] text-[var(--foreground)]">{run.selectedCount}</p>
+          </div>
+          <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Dispatched</p>
+            <p className="mt-1 text-[0.88rem] text-[var(--foreground)]">{run.dispatchedCount}</p>
+          </div>
+          <div className="border border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Finished</p>
+            <p className="mt-1 text-[0.88rem] text-[var(--foreground)]">{formatDate(run.endedAt)}</p>
+          </div>
+        </div>
+        <div className="space-y-2 border border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Summary</p>
+          <p className="text-[0.9rem] leading-6 text-[var(--foreground)]">{run.summary}</p>
+        </div>
         <RunDetailsBody details={run.details} />
       </div>
-    </details>
+    </ModalShell>
   )
 }
 
@@ -1578,6 +1661,7 @@ export function RunsContent({
 }) {
   const { canLoadMore, loadMore, sentinelRef, visibleCount } = useProgressiveList(runs.length, listPageSize)
   const visibleRuns = runs.slice(0, visibleCount)
+  const [selectedRun, setSelectedRun] = useState<AppState['runs'][number] | null>(null)
 
   return (
     <div className="space-y-6">
@@ -1601,6 +1685,8 @@ export function RunsContent({
             visibleRuns.length > 0
               ? visibleRuns.map((run) => ({
                   key: `run-${run.id}`,
+                  onClick: countRunDetailEntries(run.details) > 0 ? () => setSelectedRun(run) : undefined,
+                  title: countRunDetailEntries(run.details) > 0 ? 'Open run details' : undefined,
                   cells: [
                     { key: 'run', content: `#${run.id}` },
                     { key: 'started', content: formatDate(run.startedAt) },
@@ -1610,12 +1696,7 @@ export function RunsContent({
                     { key: 'dispatched', content: `${run.dispatchedCount}` },
                     {
                       key: 'summary',
-                      content: (
-                        <div className="max-w-[34rem] space-y-2">
-                          <p className="text-[0.84rem] leading-5 text-[var(--foreground)]">{run.summary}</p>
-                          <RunDetailsPanel run={run} />
-                        </div>
-                      )
+                      content: <RunSummaryCell run={run} onOpen={() => setSelectedRun(run)} />
                     }
                   ]
                 }))
@@ -1631,6 +1712,7 @@ export function RunsContent({
           shownCount={visibleRuns.length}
           totalCount={runs.length}
         />
+        <RunDetailsDialog run={selectedRun} open={selectedRun !== null} onClose={() => setSelectedRun(null)} />
       </ContentBlock>
     </div>
   )
