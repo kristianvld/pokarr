@@ -19,7 +19,8 @@ import {
   type ScanStatusResponse,
   type ScanTrigger,
   type QueueIssue,
-  type QueueItem
+  type QueueItem,
+  type RunDetails
 } from '@/shared/models'
 
 export function createRuntime(store: Store) {
@@ -1406,6 +1407,34 @@ function toQueueItem(candidate: QueueCandidate, nextRunAt: string | null): Queue
     reason: candidate.reason,
     backoff: candidate.backoff
   }
+}
+
+function toRunDetailItem(candidate: QueueCandidate): RunDetails['dispatched'][number] {
+  return {
+    title: candidate.title,
+    kind: candidate.kind,
+    itemUrl: candidate.itemUrl,
+    reason: candidate.reason
+  }
+}
+
+function toRunFailureDetail(candidate: QueueCandidate, message: string): RunDetails['failed'][number] {
+  return {
+    ...toRunDetailItem(candidate),
+    error: message
+  }
+}
+
+function formatRunFailure(candidate: QueueCandidate, message: string) {
+  return `${candidate.title}: ${message}`
+}
+
+function formatDeferredRunNote(count: number) {
+  if (count <= 0) {
+    return null
+  }
+
+  return `${count} pending ${count === 1 ? 'search was' : 'searches were'} left for a later run.`
 }
 
 function compareQueueItems(left: QueueItem, right: QueueItem) {
@@ -2908,7 +2937,13 @@ async function runRule(ruleId: number, trigger: 'manual' | 'scheduled') {
       selectedCount: 0,
       dispatchedCount: 0,
       summary: 'Instance is disabled.',
-      skipReason: 'Instance is disabled.'
+      skipReason: 'Instance is disabled.',
+      details: {
+        dispatched: [],
+        failed: [],
+        deferred: [],
+        notes: ['Instance is disabled.']
+      }
     })
   }
 
@@ -2935,7 +2970,13 @@ async function runRule(ruleId: number, trigger: 'manual' | 'scheduled') {
         selectedCount: 0,
         dispatchedCount: 0,
         summary,
-        skipReason: summary
+        skipReason: summary,
+        details: {
+          dispatched: [],
+          failed: [],
+          deferred: [],
+          notes: evaluation.issues.map((issue) => issue.message)
+        }
       })
     }
 
@@ -2954,12 +2995,18 @@ async function runRule(ruleId: number, trigger: 'manual' | 'scheduled') {
         selectedCount: 0,
         dispatchedCount: 0,
         summary,
-        skipReason: summary === 'No eligible items.' ? summary : null
+        skipReason: summary === 'No eligible items.' ? summary : null,
+        details: {
+          dispatched: [],
+          failed: [],
+          deferred: [],
+          notes: issues.map((issue) => issue.message)
+        }
       })
     }
 
     const successful: QueueCandidate[] = []
-    const failures: string[] = []
+    const failures: Array<{ candidate: QueueCandidate; message: string }> = []
     let skippedAfterFailure = 0
 
     for (const candidate of selected) {
@@ -2968,7 +3015,10 @@ async function runRule(ruleId: number, trigger: 'manual' | 'scheduled') {
         successful.push(candidate)
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Dispatch failed.'
-        failures.push(`${candidate.title}: ${message}`)
+        failures.push({
+          candidate,
+          message
+        })
         if (shouldAbortRemainingDispatches(error)) {
           skippedAfterFailure = selected.length - successful.length - failures.length
           break
@@ -2998,19 +3048,25 @@ async function runRule(ruleId: number, trigger: 'manual' | 'scheduled') {
     }
 
     const endedAt = new Date().toISOString()
+    const deferred = skippedAfterFailure > 0 ? selected.slice(successful.length + failures.length).map(toRunDetailItem) : []
+    const deferredNote = formatDeferredRunNote(skippedAfterFailure)
+    const details: RunDetails = {
+      dispatched: successful.map(toRunDetailItem),
+      failed: failures.map(({ candidate, message }) => toRunFailureDetail(candidate, message)),
+      deferred,
+      notes: deferredNote ? [deferredNote] : []
+    }
     const summary =
       failures.length === 0
         ? `Triggered ${successful.length} ${successful.length === 1 ? 'search' : 'searches'}.`
         : successful.length === 0
           ? skippedAfterFailure > 0
-            ? `${failures[0] ?? 'Failed to trigger a search.'} ${skippedAfterFailure} pending ${skippedAfterFailure === 1 ? 'search was' : 'searches were'} left for a later run.`
-            : failures[0] ?? 'Failed to trigger a search.'
+            ? `${formatRunFailure(failures[0].candidate, failures[0].message)} ${deferredNote}`
+            : formatRunFailure(failures[0].candidate, failures[0].message)
           : [
               `Triggered ${successful.length} of ${selected.length} searches.`,
               `${failures.length} failed.`,
-              skippedAfterFailure > 0
-                ? `${skippedAfterFailure} pending ${skippedAfterFailure === 1 ? 'search was' : 'searches were'} left for a later run.`
-                : null
+              deferredNote
             ]
               .filter(Boolean)
               .join(' ')
@@ -3025,7 +3081,8 @@ async function runRule(ruleId: number, trigger: 'manual' | 'scheduled') {
       selectedCount: selected.length,
       dispatchedCount: successful.length,
       summary,
-      skipReason: null
+      skipReason: null,
+      details
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to evaluate the rule.'
@@ -3040,7 +3097,13 @@ async function runRule(ruleId: number, trigger: 'manual' | 'scheduled') {
       selectedCount: 0,
       dispatchedCount: 0,
       summary: message,
-      skipReason: deferredByRecovery ? message : null
+      skipReason: deferredByRecovery ? message : null,
+      details: {
+        dispatched: [],
+        failed: [],
+        deferred: [],
+        notes: [message]
+      }
     })
   } finally {
     runningRules.delete(ruleId)

@@ -61,10 +61,44 @@ const run: RunRecord = {
   startedAt: '2026-03-16T02:00:00.000Z',
   endedAt: '2026-03-16T02:05:00.000Z',
   status: 'failed',
-  selectedCount: 10,
-  dispatchedCount: 4,
-  summary: 'Triggered 4 of 10 searches. 6 failed.',
-  skipReason: null
+  selectedCount: 4,
+  dispatchedCount: 2,
+  summary: 'Triggered 2 of 4 searches. 1 failed. 1 pending search was left for a later run.',
+  skipReason: null,
+  details: {
+    dispatched: [
+      {
+        title: 'Movie Alpha',
+        kind: 'movie',
+        itemUrl: 'http://radarr.local/movie/101',
+        reason: 'Missing movie'
+      },
+      {
+        title: 'Movie Beta',
+        kind: 'movie',
+        itemUrl: 'http://radarr.local/movie/102',
+        reason: 'Missing movie'
+      }
+    ],
+    failed: [
+      {
+        title: 'Movie Gamma',
+        kind: 'movie',
+        itemUrl: 'http://radarr.local/movie/103',
+        reason: 'Missing movie',
+        error: 'HTTP 502 Bad Gateway'
+      }
+    ],
+    deferred: [
+      {
+        title: 'Movie Delta',
+        kind: 'movie',
+        itemUrl: 'http://radarr.local/movie/104',
+        reason: 'Missing movie'
+      }
+    ],
+    notes: ['1 pending search was left for a later run.']
+  }
 }
 
 const backup: BackupRecord = {
@@ -84,9 +118,15 @@ describe('notification message builders', () => {
     expect(message.title).toBe('❌ Run failed: Retry UHD upgrades')
     expect(message.level).toBe('failure')
     expect(message.body).toContain('- **Rule:** Retry UHD upgrades')
-    expect(message.body).toContain('- **Dispatched:** 4')
+    expect(message.body).toContain('- **Dispatched:** 2')
     expect(message.body).toContain('**Summary**')
-    expect(message.body).toContain('> Triggered 4 of 10 searches. 6 failed.')
+    expect(message.body).toContain('> Triggered 2 of 4 searches. 1 failed. 1 pending search was left for a later run.')
+    expect(message.body).toContain('**Searches triggered**')
+    expect(message.body).toContain('> Movie Alpha')
+    expect(message.body).toContain('**Dispatch failures**')
+    expect(message.body).toContain('> Movie Gamma: HTTP 502 Bad Gateway')
+    expect(message.body).toContain('**Left for later**')
+    expect(message.body).toContain('> Movie Delta')
   })
 
   test('formats backup and restore notifications with identifiers and details', () => {

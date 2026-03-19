@@ -91,6 +91,28 @@ function buildQuotedSection(title: string, content: string | null | undefined) {
   ].join('\n')
 }
 
+function truncateLine(value: string, limit = 220) {
+  const trimmed = value.trim()
+  if (trimmed.length <= limit) {
+    return trimmed
+  }
+
+  return `${trimmed.slice(0, limit - 1)}...`
+}
+
+function buildListSection(title: string, lines: string[], limit = 5): [string, string] | null {
+  if (lines.length === 0) {
+    return null
+  }
+
+  const visible = lines.slice(0, limit).map((line) => truncateLine(line))
+  if (lines.length > limit) {
+    visible.push(`...and ${lines.length - limit} more.`)
+  }
+
+  return [title, visible.join('\n')]
+}
+
 function buildMessage(
   title: string,
   level: NotificationLevel,
@@ -125,6 +147,12 @@ export function buildRunNotification(
   run: RunRecord
 ): NotificationMessage {
   const completed = run.status === 'completed'
+  const detailSections = [
+    buildListSection('Searches triggered', run.details.dispatched.map((item) => item.title)),
+    buildListSection('Dispatch failures', run.details.failed.map((item) => `${item.title}: ${item.error}`)),
+    buildListSection('Left for later', run.details.deferred.map((item) => item.title)),
+    buildListSection('Notes', run.details.notes)
+  ].filter((section): section is [string, string] => section !== null)
 
   return buildMessage(
     completed ? `✅ Run completed: ${rule.name}` : `❌ Run failed: ${rule.name}`,
@@ -139,7 +167,7 @@ export function buildRunNotification(
       ['Started', formatTimestamp(run.startedAt)],
       ['Finished', formatTimestamp(run.endedAt)]
     ],
-    [['Summary', run.summary]]
+    [['Summary', run.summary], ...detailSections]
   )
 }
 

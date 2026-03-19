@@ -49,6 +49,7 @@ Activity is the run ledger. Each row records:
 - dispatched count
 - summary
 - trigger source
+- item-level results for triggered searches, per-item failures, and anything left for a later run
 
 ## System
 

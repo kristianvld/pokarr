@@ -1459,6 +1459,112 @@ export function QueueIssuesPanel({ issues }: { issues: QueueIssue[] }) {
   )
 }
 
+function countRunDetailEntries(details: AppState['runs'][number]['details']) {
+  return details.dispatched.length + details.failed.length + details.deferred.length + details.notes.length
+}
+
+function summarizeRunDetailDisclosure(details: AppState['runs'][number]['details']) {
+  const parts: string[] = []
+
+  if (details.dispatched.length > 0) {
+    parts.push(`${details.dispatched.length} ${details.dispatched.length === 1 ? 'search' : 'searches'} triggered`)
+  }
+
+  if (details.failed.length > 0) {
+    parts.push(`${details.failed.length} ${details.failed.length === 1 ? 'failure' : 'failures'}`)
+  }
+
+  if (details.deferred.length > 0) {
+    parts.push(`${details.deferred.length} left for later`)
+  }
+
+  if (parts.length === 0 && details.notes.length > 0) {
+    parts.push(`${details.notes.length} ${details.notes.length === 1 ? 'note' : 'notes'}`)
+  }
+
+  return parts.join(' · ') || 'Show run details'
+}
+
+function RunDetailItemList({
+  title,
+  items,
+  showReason = false
+}: {
+  title: string
+  items: AppState['runs'][number]['details']['dispatched'] | AppState['runs'][number]['details']['failed']
+  showReason?: boolean
+}) {
+  if (items.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">{title}</p>
+      <ul className="space-y-1.5">
+        {items.map((item, index) => (
+          <li key={`${title}-${item.title}-${index}`} className="space-y-0.5 text-[0.8rem] leading-5 text-[var(--foreground-soft)]">
+            <div>
+              <QueueItemLink title={item.title} url={item.itemUrl} />
+            </div>
+            {'error' in item ? <p className="text-[var(--danger)]">{item.error}</p> : null}
+            {showReason && item.reason ? <p className="text-[var(--muted)]">{item.reason}</p> : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function RunDetailsBody({
+  details,
+  compact = false
+}: {
+  details: AppState['runs'][number]['details']
+  compact?: boolean
+}) {
+  return (
+    <div className={cn('space-y-2', compact ? 'text-[0.78rem]' : 'text-[0.8rem]')}>
+      <RunDetailItemList title="Searches triggered" items={details.dispatched} showReason={!compact} />
+      <RunDetailItemList title="Dispatch failures" items={details.failed} showReason={!compact} />
+      <RunDetailItemList title="Left for later" items={details.deferred} showReason={!compact} />
+      {details.notes.length > 0 ? (
+        <div className="space-y-1.5">
+          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">Notes</p>
+          <ul className="space-y-1 text-[0.8rem] leading-5 text-[var(--foreground-soft)]">
+            {details.notes.map((note, index) => (
+              <li key={`${note}-${index}`}>{note}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function RunDetailsPanel({ run }: { run: AppState['runs'][number] }) {
+  const detailEntryCount = countRunDetailEntries(run.details)
+  if (detailEntryCount === 0) {
+    return null
+  }
+
+  const showInline = detailEntryCount <= 3 && run.details.failed.length <= 1 && run.details.notes.length <= 1
+  if (showInline) {
+    return <RunDetailsBody details={run.details} compact />
+  }
+
+  return (
+    <details className="rounded-[2px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
+      <summary className="cursor-pointer list-none text-[0.78rem] font-semibold text-[var(--foreground-soft)] marker:hidden">
+        {summarizeRunDetailDisclosure(run.details)}
+      </summary>
+      <div className="pt-2">
+        <RunDetailsBody details={run.details} />
+      </div>
+    </details>
+  )
+}
+
 export function RunsContent({
   runs,
   totalRuns,
@@ -1502,7 +1608,15 @@ export function RunsContent({
                     { key: 'status', content: run.status },
                     { key: 'selected', content: `${run.selectedCount}` },
                     { key: 'dispatched', content: `${run.dispatchedCount}` },
-                    { key: 'summary', content: run.summary }
+                    {
+                      key: 'summary',
+                      content: (
+                        <div className="max-w-[34rem] space-y-2">
+                          <p className="text-[0.84rem] leading-5 text-[var(--foreground)]">{run.summary}</p>
+                          <RunDetailsPanel run={run} />
+                        </div>
+                      )
+                    }
                   ]
                 }))
               : []

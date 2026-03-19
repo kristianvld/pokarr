@@ -55,6 +55,7 @@ A run is one manual or scheduled execution of a rule. Each run records:
 - selected item count
 - dispatched command count
 - summary
+- item-level search results, including triggered searches, per-item failures, and deferred items
 - optional skip reason
 
 ## Backup

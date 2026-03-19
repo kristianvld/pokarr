@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
+import { createEmptyRunDetails } from '@/shared/models'
 import { Store } from './db'
 
 const tempDirs: string[] = []
@@ -182,6 +183,112 @@ describe('Store backups', () => {
 })
 
 describe('Store state summary', () => {
+  test('persists structured run details and defaults legacy rows to empty details', async () => {
+    const { store } = await createTestStore()
+
+    const instance = store.createInstance({
+      kind: 'sonarr',
+      name: 'Primary',
+      baseUrl: 'http://primary.local',
+      apiKey: 'primary-api-key',
+      enabled: true
+    })
+
+    const rule = store.createRule({
+      instanceId: instance.id,
+      name: 'Record run details',
+      cadenceMinutes: 15,
+      batchSize: 2,
+      cooldownHours: 24,
+      targetKind: 'series',
+      scope: {
+        missingOnly: true,
+        useProfileTargets: false,
+        minimumQuality: null,
+        minimumCustomFormatScore: null
+      },
+      guards: {
+        monitoredOnly: true,
+        minimumReleaseAgeMinutes: 0
+      },
+      backoff: {
+        enabled: false,
+        escalateAfterPokes: 3,
+        episodeFallback: false
+      },
+      enabled: true
+    })
+
+    const stored = store.recordRun({
+      ruleId: rule.id,
+      instanceId: instance.id,
+      trigger: 'manual',
+      startedAt: '2026-03-16T01:00:00.000Z',
+      endedAt: '2026-03-16T01:01:00.000Z',
+      status: 'failed',
+      selectedCount: 2,
+      dispatchedCount: 1,
+      summary: 'Triggered 1 of 2 searches. 1 failed.',
+      details: {
+        dispatched: [
+          {
+            title: 'Alpha',
+            kind: 'series',
+            itemUrl: 'http://primary.local/series/alpha',
+            reason: 'Missing series'
+          }
+        ],
+        failed: [
+          {
+            title: 'Beta',
+            kind: 'series',
+            itemUrl: 'http://primary.local/series/beta',
+            reason: 'Missing series',
+            error: 'HTTP 502 Bad Gateway'
+          }
+        ],
+        deferred: [],
+        notes: []
+      }
+    })
+
+    expect(stored.details.dispatched.map((item) => item.title)).toEqual(['Alpha'])
+    expect(stored.details.failed[0]?.error).toBe('HTTP 502 Bad Gateway')
+
+    store.db
+      .query(
+        `INSERT INTO runs (
+          rule_id,
+          instance_id,
+          trigger,
+          started_at,
+          ended_at,
+          status,
+          selected_count,
+          dispatched_count,
+          summary,
+          skip_reason
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        rule.id,
+        instance.id,
+        'manual',
+        '2026-03-16T02:00:00.000Z',
+        '2026-03-16T02:00:00.000Z',
+        'skipped',
+        0,
+        0,
+        'No eligible items.',
+        'No eligible items.'
+      )
+
+    const legacy = store.getRuns().find((run) => run.summary === 'No eligible items.')
+    expect(legacy?.details).toEqual(createEmptyRunDetails())
+    store.close()
+  })
+
   test('reports the full run count even when only the latest 100 runs are returned', async () => {
     const { store } = await createTestStore()
 

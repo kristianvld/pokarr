@@ -88,6 +88,36 @@ export const ruleRecordSchema = ruleInputSchema.extend({
 })
 export type RuleRecord = z.infer<typeof ruleRecordSchema>
 
+export const runDetailItemSchema = z.object({
+  title: z.string(),
+  kind: ruleTargetKindSchema,
+  itemUrl: z.string().nullable().default(null),
+  reason: z.string().nullable().default(null)
+})
+export type RunDetailItem = z.infer<typeof runDetailItemSchema>
+
+export const runFailureDetailSchema = runDetailItemSchema.extend({
+  error: z.string()
+})
+export type RunFailureDetail = z.infer<typeof runFailureDetailSchema>
+
+export const runDetailsSchema = z.object({
+  dispatched: z.array(runDetailItemSchema).default([]),
+  failed: z.array(runFailureDetailSchema).default([]),
+  deferred: z.array(runDetailItemSchema).default([]),
+  notes: z.array(z.string()).default([])
+})
+export type RunDetails = z.infer<typeof runDetailsSchema>
+
+export function createEmptyRunDetails(): RunDetails {
+  return {
+    dispatched: [],
+    failed: [],
+    deferred: [],
+    notes: []
+  }
+}
+
 export const runRecordSchema = z.object({
   id: z.number().int().positive(),
   ruleId: z.number().int().positive(),
@@ -99,7 +129,8 @@ export const runRecordSchema = z.object({
   selectedCount: z.number().int().nonnegative(),
   dispatchedCount: z.number().int().nonnegative(),
   summary: z.string(),
-  skipReason: z.string().nullable()
+  skipReason: z.string().nullable(),
+  details: runDetailsSchema.optional().transform((value) => value ?? createEmptyRunDetails())
 })
 export type RunRecord = z.infer<typeof runRecordSchema>
 

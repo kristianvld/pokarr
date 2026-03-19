@@ -190,7 +190,7 @@ export const sectionMeta: Record<SectionId, SectionMeta> = {
   runs: {
     navLabel: 'Activity',
     title: 'Run Activity',
-    subtitle: 'Recorded runs with status, timing, and summary.',
+    subtitle: 'Recorded runs with status, timing, summary, and item-level results.',
     icon: Activity,
     panes: [{ id: 'history', label: 'History' }]
   },

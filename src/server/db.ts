@@ -19,11 +19,14 @@ import {
   type QueueIssue,
   type QueueSnapshot,
   type RunRecord,
+  type RunDetails,
   type Settings,
   type SettingsUpdate,
   appStateSchema,
+  createEmptyRunDetails,
   guardsSchema,
   queueSnapshotSchema,
+  runDetailsSchema,
   scanRunRecordSchema,
   settingsSchema
 } from '@/shared/models'
@@ -139,6 +142,18 @@ function parseRuleGuards(value: string): RuleGuards {
   return guardsSchema.parse(parseJson(value))
 }
 
+function parseRunDetails(value: unknown): RunDetails {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return createEmptyRunDetails()
+  }
+
+  try {
+    return runDetailsSchema.parse(JSON.parse(value))
+  } catch {
+    return createEmptyRunDetails()
+  }
+}
+
 function computeNextRunAt(lastRunAt: string | null, createdAt: string, cadenceMinutes: number, enabled: boolean) {
   if (!enabled) {
     return null
@@ -214,7 +229,8 @@ export class Store {
         selected_count INTEGER NOT NULL DEFAULT 0,
         dispatched_count INTEGER NOT NULL DEFAULT 0,
         summary TEXT NOT NULL,
-        skip_reason TEXT
+        skip_reason TEXT,
+        details_json TEXT
       );
 
       CREATE TABLE IF NOT EXISTS backups (
@@ -334,6 +350,11 @@ export class Store {
       CREATE INDEX IF NOT EXISTS scan_runs_instance_id_idx ON scan_runs(instance_id);
       CREATE INDEX IF NOT EXISTS scan_runs_started_at_idx ON scan_runs(started_at DESC);
     `)
+
+    const runColumns = this.db.query('PRAGMA table_info(runs)').all() as Array<{ name?: string }>
+    if (!runColumns.some((column) => column.name === 'details_json')) {
+      this.db.exec('ALTER TABLE runs ADD COLUMN details_json TEXT')
+    }
 
     const currentSettings = defaultSettings()
     this.db
@@ -1008,7 +1029,7 @@ export class Store {
   getRuns(): RunRecord[] {
     const rows = this.db
       .query(
-        `SELECT id, rule_id, instance_id, trigger, started_at, ended_at, status, selected_count, dispatched_count, summary, skip_reason
+        `SELECT id, rule_id, instance_id, trigger, started_at, ended_at, status, selected_count, dispatched_count, summary, skip_reason, details_json
          FROM runs
          ORDER BY started_at DESC
          LIMIT 100`
@@ -1026,7 +1047,8 @@ export class Store {
       selectedCount: Number(row.selected_count),
       dispatchedCount: Number(row.dispatched_count),
       summary: String(row.summary),
-      skipReason: row.skip_reason ? String(row.skip_reason) : null
+      skipReason: row.skip_reason ? String(row.skip_reason) : null,
+      details: parseRunDetails(row.details_json)
     }))
   }
 
@@ -1052,6 +1074,7 @@ export class Store {
     dispatchedCount: number
     summary: string
     skipReason?: string | null
+    details?: RunDetails
   }): RunRecord {
     const result = this.db
       .query(
@@ -1065,9 +1088,10 @@ export class Store {
           selected_count,
           dispatched_count,
           summary,
-          skip_reason
+          skip_reason,
+          details_json
          )
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          RETURNING id`
       )
       .get(
@@ -1080,7 +1104,8 @@ export class Store {
         input.selectedCount,
         input.dispatchedCount,
         input.summary,
-        input.skipReason ?? null
+        input.skipReason ?? null,
+        JSON.stringify(input.details ?? createEmptyRunDetails())
       ) as { id: number }
 
     return this.getRuns().find((item) => item.id === result.id)!

@@ -25,6 +25,8 @@ Pokarr accepts a single notification URL and uses Apprise to validate and send n
 
 Connection lost and restored messages come from both background health checks and real Arr requests. When possible, Pokarr includes a short reason so you can quickly tell whether the issue was a timeout, proxy problem, auth failure, or unexpected API response.
 
+Run notifications include the run summary plus the affected titles when Pokarr has them. If a run touches many items, the message keeps the first few and appends a short `...and N more.` summary instead of dumping a wall of text.
+
 ## Container behavior
 
 The official container image includes the `apprise` CLI, so notification URL validation and test sends work in the stock image.

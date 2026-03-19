@@ -152,6 +152,46 @@ type QueueItem = {
 }
 ```
 
+### Run record
+
+```ts
+type RunRecord = {
+  id: number
+  ruleId: number
+  instanceId: number
+  trigger: 'manual' | 'scheduled'
+  startedAt: string
+  endedAt: string
+  status: 'completed' | 'skipped' | 'failed'
+  selectedCount: number
+  dispatchedCount: number
+  summary: string
+  skipReason: string | null
+  details: {
+    dispatched: Array<{
+      title: string
+      kind: 'movie' | 'series' | 'season'
+      itemUrl: string | null
+      reason: string | null
+    }>
+    failed: Array<{
+      title: string
+      kind: 'movie' | 'series' | 'season'
+      itemUrl: string | null
+      reason: string | null
+      error: string
+    }>
+    deferred: Array<{
+      title: string
+      kind: 'movie' | 'series' | 'season'
+      itemUrl: string | null
+      reason: string | null
+    }>
+    notes: string[]
+  }
+}
+```
+
 ### Scan status
 
 ```ts
