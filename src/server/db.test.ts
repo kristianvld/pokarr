@@ -289,7 +289,7 @@ describe('Store state summary', () => {
     store.close()
   })
 
-  test('reports the full run count even when only the latest 100 runs are returned', async () => {
+  test('returns the full run history and reports the total run count', async () => {
     const { store } = await createTestStore()
 
     const instance = store.createInstance({
@@ -342,8 +342,9 @@ describe('Store state summary', () => {
       })
     }
 
-    expect(store.getRuns()).toHaveLength(100)
+    expect(store.getRuns()).toHaveLength(101)
     expect(store.getState().dashboard.totalRunCount).toBe(101)
+    expect(store.getState().runs).toHaveLength(101)
     store.close()
   })
 })

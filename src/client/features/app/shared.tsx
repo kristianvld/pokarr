@@ -641,6 +641,7 @@ export function TableFrame({
   columns: Array<{
     key: string
     content: ReactNode
+    className?: string
   }>
   rows: Array<{
     key: string
@@ -658,11 +659,11 @@ export function TableFrame({
   return (
     <div className="overflow-hidden border border-[var(--line)] bg-[var(--panel)]">
       <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse text-left text-[0.88rem]">
+        <table className="min-w-full table-fixed border-collapse text-left text-[0.88rem]">
           <thead className="bg-[rgba(255,255,255,0.02)] text-[var(--foreground-soft)]">
             <tr>
               {columns.map((column) => (
-                <th key={column.key} className="border-b border-[var(--line)] px-3 py-2 font-semibold">
+                <th key={column.key} className={cn('border-b border-[var(--line)] px-3 py-2 font-semibold', column.className)}>
                   {column.content}
                 </th>
               ))}
@@ -694,7 +695,13 @@ export function TableFrame({
                     title={row.title}
                   >
                     {row.cells.map((cell) => (
-                      <td key={cell.key} className="border-b border-[rgba(255,255,255,0.08)] px-3 py-2">
+                      <td
+                        key={cell.key}
+                        className={cn(
+                          'border-b border-[rgba(255,255,255,0.08)] px-3 py-2',
+                          columns.find((column) => column.key === cell.key)?.className
+                        )}
+                      >
                         {cell.content}
                       </td>
                     ))}

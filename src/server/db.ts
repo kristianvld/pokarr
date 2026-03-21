@@ -1031,8 +1031,7 @@ export class Store {
       .query(
         `SELECT id, rule_id, instance_id, trigger, started_at, ended_at, status, selected_count, dispatched_count, summary, skip_reason, details_json
          FROM runs
-         ORDER BY started_at DESC
-         LIMIT 100`
+         ORDER BY started_at DESC`
       )
       .all() as Array<Record<string, unknown>>
 

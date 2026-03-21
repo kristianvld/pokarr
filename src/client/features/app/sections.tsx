@@ -544,27 +544,50 @@ export function QueueContent({
     </div>
   )
 
-  const orderingHeaders = [{ key: 'item', content: 'Item' as ReactNode }]
+  const queueColumnClassName = (key: string) => {
+    switch (key) {
+      case 'position':
+        return 'w-[6rem] whitespace-nowrap'
+      case 'item':
+        return 'w-[18rem]'
+      case 'rule':
+        return 'w-[12rem]'
+      case 'instance':
+        return 'w-[12rem]'
+      case 'target':
+        return 'w-[8rem] whitespace-nowrap'
+      case 'release':
+        return 'w-[12rem] whitespace-nowrap'
+      case 'next-run':
+        return 'w-[12rem] whitespace-nowrap'
+      case 'reason':
+        return 'w-[20rem]'
+      default:
+        return undefined
+    }
+  }
+
+  const orderingHeaders = [{ key: 'item', content: 'Item' as ReactNode, className: queueColumnClassName('item') }]
   if (orderingColumns.position) {
-    orderingHeaders.unshift({ key: 'position', content: 'Position' })
+    orderingHeaders.unshift({ key: 'position', content: 'Position', className: queueColumnClassName('position') })
   }
   if (orderingColumns.rule) {
-    orderingHeaders.push({ key: 'rule', content: ruleHeader })
+    orderingHeaders.push({ key: 'rule', content: ruleHeader, className: queueColumnClassName('rule') })
   }
   if (orderingColumns.instance) {
-    orderingHeaders.push({ key: 'instance', content: instanceHeader })
+    orderingHeaders.push({ key: 'instance', content: instanceHeader, className: queueColumnClassName('instance') })
   }
   if (orderingColumns.target) {
-    orderingHeaders.push({ key: 'target', content: typeHeader })
+    orderingHeaders.push({ key: 'target', content: typeHeader, className: queueColumnClassName('target') })
   }
   if (orderingColumns.release) {
-    orderingHeaders.push({ key: 'release', content: 'Release' })
+    orderingHeaders.push({ key: 'release', content: 'Release', className: queueColumnClassName('release') })
   }
   if (orderingColumns.nextRun) {
-    orderingHeaders.push({ key: 'next-run', content: 'Next run' })
+    orderingHeaders.push({ key: 'next-run', content: 'Next run', className: queueColumnClassName('next-run') })
   }
   if (orderingColumns.reason) {
-    orderingHeaders.push({ key: 'reason', content: 'Reason' })
+    orderingHeaders.push({ key: 'reason', content: 'Reason', className: queueColumnClassName('reason') })
   }
   const queueList = useProgressiveList(queueEntries.length, listPageSize)
   const visibleQueueEntries = queueEntries.slice(0, queueList.visibleCount)
@@ -582,11 +605,11 @@ export function QueueContent({
           <ListResultsSummary shownCount={visibleRules.length} matchingCount={rules.length} totalCount={rules.length} />
           <TableFrame
             columns={[
-              { key: 'rule', content: 'Rule' },
-              { key: 'schedule', content: 'Schedule' },
-              { key: 'batch', content: 'Batch' },
-              { key: 'cooldown', content: 'Cooldown' },
-              { key: 'next-run', content: 'Next run' }
+              { key: 'rule', content: 'Rule', className: 'w-[34%]' },
+              { key: 'schedule', content: 'Schedule', className: 'w-[16%] whitespace-nowrap' },
+              { key: 'batch', content: 'Batch', className: 'w-[10%] whitespace-nowrap' },
+              { key: 'cooldown', content: 'Cooldown', className: 'w-[12%] whitespace-nowrap' },
+              { key: 'next-run', content: 'Next run', className: 'w-[28%] whitespace-nowrap' }
             ]}
             rows={
               visibleRules.length > 0
@@ -1673,13 +1696,13 @@ export function RunsContent({
         <ListResultsSummary shownCount={visibleRuns.length} matchingCount={runs.length} totalCount={totalRuns} />
         <TableFrame
           columns={[
-            { key: 'run', content: 'Run' },
-            { key: 'started', content: 'Started' },
-            { key: 'trigger', content: 'Trigger' },
-            { key: 'status', content: 'Status' },
-            { key: 'selected', content: 'Selected' },
-            { key: 'dispatched', content: 'Dispatched' },
-            { key: 'summary', content: 'Summary' }
+            { key: 'run', content: 'Run', className: 'w-[8rem] whitespace-nowrap' },
+            { key: 'started', content: 'Started', className: 'w-[14rem] whitespace-nowrap' },
+            { key: 'trigger', content: 'Trigger', className: 'w-[9rem] whitespace-nowrap' },
+            { key: 'status', content: 'Status', className: 'w-[9rem] whitespace-nowrap' },
+            { key: 'selected', content: 'Selected', className: 'w-[7rem] whitespace-nowrap' },
+            { key: 'dispatched', content: 'Dispatched', className: 'w-[8rem] whitespace-nowrap' },
+            { key: 'summary', content: 'Summary', className: 'w-[32%]' }
           ]}
           rows={
             visibleRuns.length > 0
@@ -1791,9 +1814,9 @@ export function SystemContent({
           <ListResultsSummary shownCount={visibleLogRows.length} matchingCount={logRows.length} totalCount={logRows.length} />
           <TableFrame
             columns={[
-              { key: 'when', content: 'When' },
-              { key: 'type', content: 'Type' },
-              { key: 'summary', content: 'Summary' }
+              { key: 'when', content: 'When', className: 'w-[14rem] whitespace-nowrap' },
+              { key: 'type', content: 'Type', className: 'w-[10rem] whitespace-nowrap' },
+              { key: 'summary', content: 'Summary', className: 'w-[46%]' }
             ]}
             rows={visibleLogRows.map((entry, index) => ({
               key: `log-${entry.at}-${entry.type}-${index}`,
@@ -1851,14 +1874,14 @@ export function SystemContent({
           <ListResultsSummary shownCount={visibleScanRuns.length} matchingCount={scanRuns.length} totalCount={scanRuns.length} />
           <TableFrame
             columns={[
-              { key: 'instance', content: 'Instance' },
-              { key: 'kind', content: 'Kind' },
-              { key: 'trigger', content: 'Trigger' },
-              { key: 'status', content: 'Status' },
-              { key: 'started', content: 'Started' },
-              { key: 'duration', content: 'Duration' },
-              { key: 'work', content: 'Work' },
-              { key: 'summary', content: 'Summary' }
+              { key: 'instance', content: 'Instance', className: 'w-[12rem]' },
+              { key: 'kind', content: 'Kind', className: 'w-[8rem] whitespace-nowrap' },
+              { key: 'trigger', content: 'Trigger', className: 'w-[10rem] whitespace-nowrap' },
+              { key: 'status', content: 'Status', className: 'w-[9rem] whitespace-nowrap' },
+              { key: 'started', content: 'Started', className: 'w-[14rem] whitespace-nowrap' },
+              { key: 'duration', content: 'Duration', className: 'w-[8rem] whitespace-nowrap' },
+              { key: 'work', content: 'Work', className: 'w-[12rem]' },
+              { key: 'summary', content: 'Summary', className: 'w-[24%]' }
             ]}
             rows={
               visibleScanRuns.length > 0
@@ -1929,14 +1952,14 @@ export function SystemContent({
           </Card>
           <TableFrame
             columns={[
-              { key: 'backup', content: 'Backup' },
-              { key: 'trigger', content: 'Trigger' },
-              { key: 'created', content: 'Created' },
-              { key: 'restored', content: 'Restored' },
-              { key: 'size', content: 'Size' },
-              { key: 'result', content: 'Result' },
-              { key: 'path', content: 'Path' },
-              { key: 'action', content: 'Action' }
+              { key: 'backup', content: 'Backup', className: 'w-[7rem] whitespace-nowrap' },
+              { key: 'trigger', content: 'Trigger', className: 'w-[9rem] whitespace-nowrap' },
+              { key: 'created', content: 'Created', className: 'w-[14rem] whitespace-nowrap' },
+              { key: 'restored', content: 'Restored', className: 'w-[14rem] whitespace-nowrap' },
+              { key: 'size', content: 'Size', className: 'w-[8rem] whitespace-nowrap' },
+              { key: 'result', content: 'Result', className: 'w-[18rem]' },
+              { key: 'path', content: 'Path', className: 'w-[22rem]' },
+              { key: 'action', content: 'Action', className: 'w-[8rem] whitespace-nowrap' }
             ]}
             rows={
               visibleBackups.length > 0
@@ -2044,7 +2067,7 @@ export function SystemContent({
             <CardContent className="space-y-3 py-4 text-sm text-[var(--foreground-soft)]">
               <InfoLine label="Connected instances" value={String(state.instances.length)} />
               <InfoLine label="Enabled rules" value={String(state.rules.filter((item) => item.enabled).length)} />
-              <InfoLine label="Recorded runs" value={String(state.runs.length)} />
+              <InfoLine label="Recorded runs" value={String(state.dashboard.totalRunCount)} />
               <InfoLine label="Stored backups" value={String(state.backups.length)} />
               <InfoLine label="Backup schedule" value={state.settings.backupSchedule} />
               <InfoLine label="Retention" value={`${state.settings.backupRetentionDays} days`} />
@@ -2079,13 +2102,13 @@ export function SystemContent({
         <div className="mt-4">
           <TableFrame
             columns={[
-              { key: 'instance', content: 'Instance' },
-              { key: 'snapshot', content: 'Snapshot' },
-              { key: 'last-scan', content: 'Last scan' },
-              { key: 'next-scan', content: 'Next scan' },
-              { key: 'coverage', content: 'Coverage' },
-              { key: 'error', content: 'Issue' },
-              { key: 'action', content: 'Action' }
+              { key: 'instance', content: 'Instance', className: 'w-[12rem]' },
+              { key: 'snapshot', content: 'Snapshot', className: 'w-[9rem] whitespace-nowrap' },
+              { key: 'last-scan', content: 'Last scan', className: 'w-[13rem] whitespace-nowrap' },
+              { key: 'next-scan', content: 'Next scan', className: 'w-[13rem] whitespace-nowrap' },
+              { key: 'coverage', content: 'Coverage', className: 'w-[12rem]' },
+              { key: 'error', content: 'Issue', className: 'w-[24rem]' },
+              { key: 'action', content: 'Action', className: 'w-[8rem] whitespace-nowrap' }
             ]}
             rows={
               scanInstances.length > 0

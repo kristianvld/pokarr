@@ -708,7 +708,7 @@ export function AuthenticatedApp({
       case 'queue':
         return queueEntries.length > 0 ? queueEntries.length : null
       case 'runs':
-        return state.runs.length
+        return state.dashboard.totalRunCount
       default:
         return null
     }
@@ -1033,7 +1033,7 @@ export function AuthenticatedApp({
                   <RunsContent
                     listPageSize={listPageSize}
                     runs={filteredRuns}
-                    totalRuns={state.runs.length}
+                    totalRuns={state.dashboard.totalRunCount}
                     onListPageSizeChange={setListPageSize}
                   />
                 ) : null}
