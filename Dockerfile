@@ -9,7 +9,7 @@ COPY scripts ./scripts
 COPY src ./src
 RUN bun run build
 
-FROM python:3.13-alpine3.24@sha256:9ef1a599f863231c3d91e941389bfdc4a2d6070557243d54df1a4e57015b960e AS runtime
+FROM python:3.15-alpine3.24@sha256:0f9552bb28711333da16915ec146f5e6bb44a7fdac9ced15dc17c2e0206346dd AS runtime
 WORKDIR /app
 
 ARG APP_VERSION=0.1.0-dev
