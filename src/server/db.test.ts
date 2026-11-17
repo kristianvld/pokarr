@@ -289,7 +289,7 @@ describe('Store state summary', () => {
     store.close()
   })
 
-  test('returns the full run history and reports the total run count', async () => {
+  test('caps runs in state at 100 while totalRunCount reflects full history', async () => {
     const { store } = await createTestStore()
 
     const instance = store.createInstance({
@@ -342,9 +342,10 @@ describe('Store state summary', () => {
       })
     }
 
-    expect(store.getRuns()).toHaveLength(101)
+    expect(store.getRuns()).toHaveLength(100)
     expect(store.getState().dashboard.totalRunCount).toBe(101)
-    expect(store.getState().runs).toHaveLength(101)
+    expect(store.getState().runs).toHaveLength(100)
+    expect(store.getRunById(101)).toMatchObject({ summary: 'Run 101' })
     store.close()
   })
 })

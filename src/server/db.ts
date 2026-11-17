@@ -154,6 +154,26 @@ function parseRunDetails(value: unknown): RunDetails {
   }
 }
 
+/** Latest N runs loaded into app state; full history size is `dashboard.totalRunCount`. */
+const RUNS_STATE_LIMIT = 100
+
+function mapRunRow(row: Record<string, unknown>): RunRecord {
+  return {
+    id: Number(row.id),
+    ruleId: Number(row.rule_id),
+    instanceId: Number(row.instance_id),
+    trigger: String(row.trigger) as RunRecord['trigger'],
+    startedAt: String(row.started_at),
+    endedAt: String(row.ended_at),
+    status: String(row.status) as RunRecord['status'],
+    selectedCount: Number(row.selected_count),
+    dispatchedCount: Number(row.dispatched_count),
+    summary: String(row.summary),
+    skipReason: row.skip_reason ? String(row.skip_reason) : null,
+    details: parseRunDetails(row.details_json)
+  }
+}
+
 function computeNextRunAt(lastRunAt: string | null, createdAt: string, cadenceMinutes: number, enabled: boolean) {
   if (!enabled) {
     return null
@@ -1031,24 +1051,24 @@ export class Store {
       .query(
         `SELECT id, rule_id, instance_id, trigger, started_at, ended_at, status, selected_count, dispatched_count, summary, skip_reason, details_json
          FROM runs
-         ORDER BY started_at DESC`
+         ORDER BY started_at DESC
+         LIMIT ?`
       )
-      .all() as Array<Record<string, unknown>>
+      .all(RUNS_STATE_LIMIT) as Array<Record<string, unknown>>
 
-    return rows.map((row) => ({
-      id: Number(row.id),
-      ruleId: Number(row.rule_id),
-      instanceId: Number(row.instance_id),
-      trigger: String(row.trigger) as RunRecord['trigger'],
-      startedAt: String(row.started_at),
-      endedAt: String(row.ended_at),
-      status: String(row.status) as RunRecord['status'],
-      selectedCount: Number(row.selected_count),
-      dispatchedCount: Number(row.dispatched_count),
-      summary: String(row.summary),
-      skipReason: row.skip_reason ? String(row.skip_reason) : null,
-      details: parseRunDetails(row.details_json)
-    }))
+    return rows.map(mapRunRow)
+  }
+
+  getRunById(id: number): RunRecord | null {
+    const row = this.db
+      .query(
+        `SELECT id, rule_id, instance_id, trigger, started_at, ended_at, status, selected_count, dispatched_count, summary, skip_reason, details_json
+         FROM runs
+         WHERE id = ?`
+      )
+      .get(id) as Record<string, unknown> | null
+
+    return row ? mapRunRow(row) : null
   }
 
   getRunCount() {
@@ -1107,7 +1127,7 @@ export class Store {
         JSON.stringify(input.details ?? createEmptyRunDetails())
       ) as { id: number }
 
-    return this.getRuns().find((item) => item.id === result.id)!
+    return this.getRunById(result.id)!
   }
 
   getRuleEntityStates(ruleId: number): RuleEntityStateRecord[] {
