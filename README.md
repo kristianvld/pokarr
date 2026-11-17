@@ -137,3 +137,8 @@ The project disables React Doctor's dead-code pass because Bun's entrypoint mode
 ## Releases
 
 For the release process and versioned docs setup, see [`docs/upgrade-and-release-notes.md`](./docs/upgrade-and-release-notes.md).
+
+## Development safety
+
+Use Bun 1.4.4. `bun run dev` binds to localhost and keeps development data in `.dev-data/`. Access a remote development server through an SSH tunnel. Production keeps its configured data directory.
+Operator requests require JSON and reject cross-origin writes. Login attempts are limited per socket address; a reverse proxy shares its address unless explicitly adapted. Documentation uses stable VitePress with a patched Vite 6 override until its stable dependency range catches up.

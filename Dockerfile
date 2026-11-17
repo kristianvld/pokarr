@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.10@sha256:b86c67b531d87b4db11470d9b2bd0c519b1976eee6fcd71634e73abfa6230d2e AS build
+FROM oven/bun:1.4.4-alpine@sha256:4cf82f5686b196504fe119db3fcd9185b191f82ece82c40680e597228ec6070a AS build
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
@@ -9,7 +9,7 @@ COPY scripts ./scripts
 COPY src ./src
 RUN bun run build
 
-FROM python:3.13-slim@sha256:8bc60ca09afaa8ea0d6d1220bde073bacfedd66a4bf8129cbdc8ef0e16c8a952 AS runtime
+FROM python:3.13-alpine3.24@sha256:9ef1a599f863231c3d91e941389bfdc4a2d6070557243d54df1a4e57015b960e AS runtime
 WORKDIR /app
 
 ARG APP_VERSION=0.1.0-dev
@@ -24,9 +24,10 @@ ENV NODE_ENV=production \
     TZ=UTC \
     PYTHONUNBUFFERED=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
-RUN pip install --disable-pip-version-check --no-cache-dir --no-compile apprise==1.9.8
-RUN addgroup --system pokarr && adduser --system --ingroup pokarr --home /app --no-create-home pokarr
+RUN apk upgrade --no-cache && apk add --no-cache tzdata libstdc++
+COPY requirements.txt ./
+RUN pip install --require-hashes --disable-pip-version-check --no-cache-dir --no-compile -r requirements.txt && pip uninstall --yes pip setuptools
+RUN addgroup -S -g 101 pokarr && adduser -S -u 100 -G pokarr -h /app -H pokarr
 
 COPY --from=build /usr/local/bin/bun /usr/local/bin/bun
 COPY --from=build /app/dist ./dist

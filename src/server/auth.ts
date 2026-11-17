@@ -78,7 +78,11 @@ function readCookie(request: Request, name: string) {
       continue
     }
 
-    return decodeURIComponent(valueParts.join('='))
+    try {
+      return decodeURIComponent(valueParts.join('='))
+    } catch {
+      return null
+    }
   }
 
   return null

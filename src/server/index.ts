@@ -29,7 +29,7 @@ export function startServer(homepage: unknown) {
     }
 
     const relativePath = pathname.replace(/^\/+/, '')
-    if (!relativePath) {
+    if (!relativePath || relativePath === 'server.js' || relativePath.endsWith('.map') || relativePath.split('/').some((part) => part.startsWith('.'))) {
       return null
     }
 
@@ -55,14 +55,16 @@ export function startServer(homepage: unknown) {
   }
 
   const server = Bun.serve({
+    maxRequestBodySize: 1024 * 1024,
+    hostname: process.env.HOST || '0.0.0.0',
     port: Number(process.env.PORT ?? '3000'),
     routes: {
       '/': homepage as never,
       '/favicon.svg': new Response(Bun.file(resolve(appRoot, 'public', 'favicon.svg'))),
       '/favicon.png': new Response(Bun.file(resolve(appRoot, 'public', 'favicon.png')))
     },
-    async fetch(request) {
-      const response = await apiFetch(request)
+    async fetch(request, server) {
+      const response = await apiFetch(request, server.requestIP(request)?.address)
       if (response) {
         return response
       }

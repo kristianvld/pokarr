@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { Button } from '@/client/components/ui/button'
 import { Input } from '@/client/components/ui/input'
@@ -217,15 +217,13 @@ export function RuleEditorDialog({
     setFormatScoreInput(form.scope.minimumCustomFormatScore === null ? '' : String(form.scope.minimumCustomFormatScore))
     setNameEdited(form.name.trim().length > 0)
   })
-  const syncRuleDialogInputsRef = useRef(syncRuleDialogInputs)
-  syncRuleDialogInputsRef.current = syncRuleDialogInputs
 
   useEffect(() => {
     if (!open) {
       return
     }
 
-    syncRuleDialogInputsRef.current()
+    syncRuleDialogInputs()
   }, [open, editingRuleId])
 
   const cadenceValidation = parseDurationInput(cadenceInput, 'minutes')

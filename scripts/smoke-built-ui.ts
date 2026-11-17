@@ -145,7 +145,8 @@ async function startBuiltServer(): Promise<ManagedServer> {
         ? `Built server did not become ready.\n${detail}`
         : error instanceof Error
           ? error.message
-          : 'Built server did not become ready.'
+          : 'Built server did not become ready.',
+      { cause: error }
     )
   }
 

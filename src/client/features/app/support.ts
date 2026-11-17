@@ -1,6 +1,6 @@
 import {
+  useCallback,
   useEffect,
-  useEffectEvent,
   useRef,
   useState
 } from 'react'
@@ -342,9 +342,9 @@ export function useProgressiveList(totalCount: number, pageSize: ListPageSize) {
     })
   }, [pageSize, totalCount])
 
-  const loadMore = useEffectEvent(() => {
+  const loadMore = useCallback(() => {
     setVisibleCount((current) => getNextVisibleCount(current, totalCount, pageSize))
-  })
+  }, [totalCount, pageSize])
 
   const canLoadMore = visibleCount < totalCount
 

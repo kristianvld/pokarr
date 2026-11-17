@@ -10,3 +10,7 @@ output
 .env
 .env.local
 .env.*.local
+
+.git
+
+.dev-data/

@@ -41,7 +41,9 @@ export function createApiFetchHandler({
   auth: ReturnType<typeof createAuthService>
   runtime: ServerRuntime
 }) {
-  return async function fetch(request: Request) {
+  const loginAttempts = new Map<string, { count: number; expiresAt: number }>()
+
+  return async function fetch(request: Request, clientAddress = 'local') {
     const url = new URL(request.url)
     const pathname = url.pathname
     let sessionSetCookie: string | null = null
@@ -49,6 +51,7 @@ export function createApiFetchHandler({
     function json(data: unknown, status = 200, headers?: HeadersInit) {
       const responseHeaders = new Headers(headers)
       responseHeaders.set('cache-control', 'no-store')
+      responseHeaders.set('x-content-type-options', 'nosniff')
       if (sessionSetCookie && !responseHeaders.has('set-cookie')) {
         responseHeaders.set('set-cookie', sessionSetCookie)
       }
@@ -74,6 +77,12 @@ export function createApiFetchHandler({
     }
 
     const parseJsonInput = async <T extends z.ZodTypeAny>(schema: T) => {
+      if (request.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() !== 'application/json') {
+        return {
+          success: false as const,
+          response: json({ error: 'Content-Type must be application/json.' }, 415)
+        }
+      }
       const body = await readJsonBody(request)
       if (!body.success) {
         return {
@@ -93,6 +102,19 @@ export function createApiFetchHandler({
       return {
         success: true as const,
         data: payload.data
+      }
+    }
+
+    if (pathname.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+      const origin = request.headers.get('origin')
+      if (origin) {
+        try {
+          if (new URL(origin).host !== url.host) {
+            return json({ error: 'Cross-origin requests are not allowed.' }, 403)
+          }
+        } catch {
+          return json({ error: 'Invalid request origin.' }, 403)
+        }
       }
     }
 
@@ -134,6 +156,23 @@ export function createApiFetchHandler({
     }
 
     if (pathname === '/api/auth/login' && request.method === 'POST') {
+      const now = Date.now()
+      for (const [address, attempts] of loginAttempts) {
+        if (attempts.expiresAt <= now) loginAttempts.delete(address)
+      }
+      let attempts = loginAttempts.get(clientAddress)
+      if (!attempts) {
+        if (loginAttempts.size >= 1024) {
+          return json({ error: 'Too many login attempts. Try again later.' }, 429, { 'retry-after': '300' })
+        }
+        attempts = { count: 0, expiresAt: now + 5 * 60 * 1000 }
+        loginAttempts.set(clientAddress, attempts)
+      }
+      if (++attempts.count > 10) {
+        return json({ error: 'Too many login attempts. Try again later.' }, 429, {
+          'retry-after': String(Math.ceil((attempts.expiresAt - now) / 1000))
+        })
+      }
       if (!store.hasUsers()) {
         return json({ error: 'Initial setup is required before login.' }, 409)
       }

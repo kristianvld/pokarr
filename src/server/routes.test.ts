@@ -74,6 +74,33 @@ afterEach(async () => {
 })
 
 describe('api routes', () => {
+  test('blocks cross-origin setup and text/plain JSON requests', async () => {
+    const { fetch, store } = await createTestContext()
+    const body = JSON.stringify({ username: 'admin', password: 'correct horse battery' })
+    const crossOrigin = await fetch(new Request('http://localhost/api/auth/setup', {
+      method: 'POST', headers: { origin: 'https://attacker.example', 'content-type': 'application/json' }, body
+    }))
+    expect(crossOrigin?.status).toBe(403)
+    const plainText = await fetch(new Request('http://localhost/api/auth/setup', {
+      method: 'POST', headers: { 'content-type': 'text/plain' }, body
+    }))
+    expect(plainText?.status).toBe(415)
+    expect(store.hasUsers()).toBe(false)
+  })
+
+  test('limits login attempts using the socket address rather than forwarded headers', async () => {
+    const { fetch, auth } = await createTestContext()
+    await auth.setupInitialUser({ username: 'admin', password: 'correct horse battery' })
+    const loginRequest = () => new Request('http://localhost/api/auth/login', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': crypto.randomUUID() },
+      body: JSON.stringify({ username: 'unknown', password: 'incorrect password' })
+    })
+    for (let i = 0; i < 10; i++) expect((await fetch(loginRequest(), '192.0.2.1'))?.status).toBe(401)
+    const limited = await fetch(loginRequest(), '192.0.2.1')
+    expect(limited?.status).toBe(429)
+    expect(limited?.headers.get('retry-after')).toBeTruthy()
+    expect((await fetch(loginRequest(), '192.0.2.2'))?.status).toBe(401)
+  })
   test('returns 400 for malformed JSON bodies', async () => {
     const { fetch } = await createTestContext()
 

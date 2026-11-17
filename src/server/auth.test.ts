@@ -42,6 +42,14 @@ afterEach(async () => {
 })
 
 describe('auth service', () => {
+  test('treats malformed percent-encoded session cookies as unauthenticated', async () => {
+    const { auth } = await createTestContext()
+    await auth.setupInitialUser({ username: 'admin', password: 'correct horse battery' })
+    const status = await auth.getSessionStatus(new Request('http://localhost/api/auth/session', {
+      headers: { cookie: 'pokarr_session=%E0%A4%A' }
+    }))
+    expect(status.auth.authenticated).toBe(false)
+  })
   test('reports setup required before the first user exists', async () => {
     const { auth } = await createTestContext()
 

@@ -1739,10 +1739,10 @@ export class Store {
         )
       } catch (recoveryError) {
         console.error('failed to reconcile backup restore state', recoveryError)
-        throw new Error(`Restore failed: ${message}. Automatic rollback also failed.`)
+        throw new Error(`Restore failed: ${message}. Automatic rollback also failed.`, { cause: recoveryError })
       }
 
-      throw new Error(`Restore failed: ${message}`)
+      throw new Error(`Restore failed: ${message}`, { cause: error })
     }
   }
 
